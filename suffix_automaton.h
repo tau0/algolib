@@ -6,19 +6,35 @@
 
 namespace AlgoLib {
 
+
 class SuffixAutomaton {
  public:
-  SuffixAutomaton(const std::string& input);
+  explicit SuffixAutomaton(const std::string& input);
+
+  constexpr static int kNoLink = -1;
 
   struct State {
+    State()
+      : length(0),
+        link(kNoLink) 
+    {}
+
+    State(int length_, int link_) 
+      : length(length_),
+        link(link_) 
+    {}
+
     int length, link;
     std::unordered_map<char, int> transitions;
   };
 
+  std::vector<State> GetStates() const {
+    return states_;
+  }
+
  private:
   std::vector<State> states_;
   int last_;
-  constexpr static int kNoLink = -1;
 
  private:
   SuffixAutomaton();
@@ -26,15 +42,13 @@ class SuffixAutomaton {
   SuffixAutomaton(const SuffixAutomaton&&);
 
   void ProcessNextChar(char element);
-  void CloneStateAndUpdate(int p, int current, char element);
+  void CloneStateAndUpdate(int pp, int current, char element);
 };
 
 SuffixAutomaton::SuffixAutomaton(const std::string& input)
   :  states_(1),
      last_(0)
 {
-  states_.front().length = 0;
-  states_.front().link = kNoLink;
   for (char element : input) {
     ProcessNextChar(element);
   }
@@ -43,34 +57,35 @@ SuffixAutomaton::SuffixAutomaton(const std::string& input)
 void SuffixAutomaton::ProcessNextChar(char element) {
   states_.emplace_back(states_[last_].length + 1, kNoLink);
   int current = states_.size() - 1;
+  int pp = last_;
   last_ = current;
-
-  int p = last_;
-  for (; p != kNoLink && !states_[p].transitions.count(element); p = states_[p].link) {
-    states_[p].transitions[element] = current;
+  for (; pp != kNoLink && !states_[pp].transitions.count(element); pp = states_[pp].link) {
+    states_[pp].transitions[element] = current;
   }
 
-  if (p == kNoLink) {
+  if (pp == kNoLink) {
     states_[current].link = 0;
     return;
   }
 
-  CloneStateAndUpdate(p, current, element);
+  CloneStateAndUpdate(pp, current, element);
 }
 
-void SuffixAutomaton::CloneStateAndUpdate(int p, int current, char element) {
-  int q = states_[p].transitions[element];
-  if (states_[p].length + 1 == states_[q].length) {
-    states_[current].link = q;
+void SuffixAutomaton::CloneStateAndUpdate(int pp, int current, char element) {
+  int qq = states_[pp].transitions[element];
+  if (states_[pp].length + 1 == states_[qq].length) {
+    states_[current].link = qq;
   } else {
-    states_.emplace_back(states_[q]);
+    states_.emplace_back(states_[qq]);
     int clone = states_.size() - 1;
-    states_.back().length = states_[p].length + 1;
-    for (; p != kNoLink && states_[p].transitions[element] == q; p = states_[p].link) {
-      states_[p].transitions[element] = clone;
+    states_.back().length = states_[pp].length + 1;
+    for (; pp != kNoLink && states_[pp].transitions[element] == qq; pp = states_[pp].link) {
+      states_[pp].transitions[element] = clone;
     }
-    states_[q].link = states_[current].link = clone;
+    states_[qq].link = states_[current].link = clone;
   }
 }
+
+constexpr int SuffixAutomaton::kNoLink;
 
 } // namespace AlgoLib
